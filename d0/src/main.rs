@@ -8,6 +8,7 @@ mod boot;
 mod image;
 mod psram;
 mod regs;
+mod rtc;
 
 core::arch::global_asm!(include_str!("start.S"));
 
@@ -24,6 +25,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main() -> ! {
+    rtc::init();
     psram::init();
     if boot::load().is_err() {
         park();
