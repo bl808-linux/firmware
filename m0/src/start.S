@@ -1,21 +1,14 @@
 /* Boot ROM enters Group0 at the XIP base; body offset remains 0x2000. */
 
 	.equ	CSR_MHCR, 0x7c1
-	.equ	CSR_MHINT, 0x7c5
 	.equ	MSTATUS_MIE, (1 << 3)
 	.equ	MHCR_IE, (1 << 0)
 	.equ	MHCR_DE, (1 << 1)
-	.equ	MHCR_BPE, (1 << 5)
-	.equ	MHCR_L0BTB, (1 << 12)
 
 	.equ	MM_CLK_CTRL_CPU, 0x30007000
 	.equ	MM_SW_SYS_RESET, 0x30007040
-	.equ	PDS_CPU_CORE_CFG0, 0x2000e110
-	.equ	GLB_SWRST_CFG2, 0x20000548
 	.equ	D0_CLK_EN, (1 << 12)
 	.equ	D0_RESET, (1 << 8)
-	.equ	LP_CLK_EN, (1 << 28)
-	.equ	LP_RESET, (1 << 3)
 
 	.equ	CLK_SETTLE_LOOPS, 1024
 
@@ -59,18 +52,14 @@ _start:
 	lla	t0, .Lboot_park
 	csrw	mtvec, t0
 
-	/* Disable I/D caches and branch prediction, preserving the 0x1023 mask. */
-	li	t0, MHCR_IE | MHCR_DE | MHCR_BPE | MHCR_L0BTB
+	/* Disable I/D caches before relocating the runtime and using DMA. */
+	li	t0, MHCR_IE | MHCR_DE
 	csrc	CSR_MHCR, t0
-	csrw	CSR_MHINT, zero
 
-	/* Hold the other cores before copying into MCU SRAM. */
+	/* Hold D0 before copying into MCU SRAM. */
 	mmio_clear MM_CLK_CTRL_CPU, D0_CLK_EN
 	settle
 	mmio_set MM_SW_SYS_RESET, D0_RESET
-	mmio_clear PDS_CPU_CORE_CFG0, LP_CLK_EN
-	settle
-	mmio_set GLB_SWRST_CFG2, LP_RESET
 
 	/* Copy code, constants and initialized data using their Flash LMA. */
 	lla	t0, __runtime_load
